@@ -2,29 +2,40 @@ import { useState } from "react";
 import TextInput from "./pages/HomePage";
 import LoadingState from "./pages/LoadingPage";
 import ResultView from "./pages/ResultPage";
+import { Client } from "@langchain/langgraph-sdk";
 
 // Define the possible UI states
 type AppState = "INPUT" | "LOADING" | "RESULT";
 
 export default function App() {
-  const [step, setStep] = useState<AppState>("INPUT");
+  const [step, setStep] = useState<AppState>("RESULT");
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const client = new Client({ apiUrl: "http://localhost:2024" });
 
-  const handleGenerate = async (text: string) => {
-    setStep("LOADING");
+  async function generateKittyVideo(notes: string) {
+    const thread = await client.threads.create();
 
+    const stream = client.runs.stream(thread.thread_id, "kitty_educator", {
+      input: { notes },
+      streamMode: "updates",
+    });
+
+    for await (const event of stream) {
+      console.log(Object.keys(event.data)?.[0], event.id, event.event);
+    }
+
+    const finalState = await client.threads.getState(thread.thread_id);
+    return finalState.values;
+  }
+
+  const onGenerate = async (notes: string) => {
     try {
-      // Logic to send text to your backend
-      // const response = await fetch('your-api-endpoint', { method: 'POST', body: JSON.stringify({ text }) });
-      // const data = await response.json();
-
-      // Simulating backend delay for now
-      setTimeout(() => {
-        setVideoUrl("https://www.w3schools.com/html/mov_bbb.mp4"); // Mock URL
-        setStep("RESULT");
-      }, 3000);
+      setStep("LOADING");
+      const res = await generateKittyVideo(notes);
+      console.log(res);
+      setStep("RESULT");
     } catch (error) {
-      console.error("Generation failed", error);
+      console.error("Generation failed:", error);
       setStep("INPUT");
     }
   };
@@ -47,17 +58,16 @@ export default function App() {
     >
       {step !== "LOADING" && (
         <header>
-          <h1 style={{ color: "var(--clr-accent-400)", marginBottom: "2rem" }}>
+          <h1 style={{ color: "var(--clr-accent-400)", marginBottom: "1rem" }}>
             Kitty explains
           </h1>
         </header>
       )}
 
-      {/* Conditional Rendering Logic */}
-      {step === "INPUT" && <TextInput onGenerate={handleGenerate} />}
+      {step === "INPUT" && <TextInput onGenerate={onGenerate} />}
       {step === "LOADING" && <LoadingState />}
-      {step === "RESULT" && videoUrl && (
-        <ResultView videoUrl={videoUrl} onReset={resetApp} />
+      {step === "RESULT" && (
+        <ResultView videoUrl={videoUrl ?? ""} onReset={resetApp} />
       )}
     </main>
   );

@@ -11,3 +11,4 @@ pillow
 imageio-ffmpeg
 PyPDF2
 python-pptx
+fastapi

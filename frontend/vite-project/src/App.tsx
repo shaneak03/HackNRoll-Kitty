@@ -11,6 +11,7 @@ export default function App() {
   const [step, setStep] = useState<AppState>("INPUT");
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const client = new Client({ apiUrl: "http://localhost:2024" });
+  const [pipelineCount, setPipelineCount] = useState(0);
 
   // Convert file to base64
   const fileToBase64 = (file: File): Promise<string> => {
@@ -18,7 +19,7 @@ export default function App() {
       const reader = new FileReader();
       reader.readAsDataURL(file);
       reader.onload = () => {
-        const base64 = (reader.result as string).split(',')[1]; // Remove data:*/*;base64, prefix
+        const base64 = (reader.result as string).split(",")[1]; // Remove data:*/*;base64, prefix
         resolve(base64);
       };
       reader.onerror = reject;
@@ -29,21 +30,21 @@ export default function App() {
   async function generateKittyVideo(notes: string, file?: File) {
     const thread = await client.threads.create();
 
-    let input: any = { 
+    let input: any = {
       notes: notes || "",
       file_data: "",
-      file_type: "text"
+      file_type: "text",
     };
 
     // If file is provided, convert to base64
     if (file) {
-      const fileExtension = file.name.split('.').pop()?.toLowerCase() || "";
+      const fileExtension = file.name.split(".").pop()?.toLowerCase() || "";
       const base64Data = await fileToBase64(file);
-      
+
       input = {
         notes: "",
         file_data: base64Data,
-        file_type: fileExtension
+        file_type: fileExtension,
       };
     }
 
@@ -53,7 +54,8 @@ export default function App() {
     });
 
     for await (const event of stream) {
-      console.log(Object.keys(event.data)?.[0], event.id, event.event);
+      console.log(Object.keys(event.data)?.[0]);
+      setPipelineCount(count => count + 1);
     }
 
     const finalState = await client.threads.getState(thread.thread_id);
@@ -66,6 +68,7 @@ export default function App() {
       const res = await generateKittyVideo(notes, file);
       console.log(res);
       setStep("RESULT");
+      setPipelineCount(0);
     } catch (error) {
       console.error("Generation failed:", error);
       setStep("INPUT");
@@ -97,7 +100,7 @@ export default function App() {
       )}
 
       {step === "INPUT" && <TextInput onGenerate={onGenerate} />}
-      {step === "LOADING" && <LoadingState />}
+      {step === "LOADING" && <LoadingState pipelineCount={pipelineCount} />}
       {step === "RESULT" && (
         <ResultView videoUrl={videoUrl ?? ""} onReset={resetApp} />
       )}

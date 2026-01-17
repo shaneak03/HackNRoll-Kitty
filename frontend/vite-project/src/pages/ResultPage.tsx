@@ -17,11 +17,11 @@ function ResultView({
       <div
         style={{
           padding: "2rem",
-          border: "2px solid var(--clr-success)",
+          border: "2px solid var(--clr-accent-400)",
           borderRadius: "12px",
         }}
       >
-        <h2 style={{ color: "var(--clr-success)" }}>Video Ready!</h2>
+        <h2 style={{ color: "var(--clr-accent-400)" }}>Video Ready!</h2>
       </div>
 
       <div style={{ display: "flex", gap: "1rem" }}>

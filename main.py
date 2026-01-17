@@ -4,11 +4,15 @@ Converts lecture notes into educational videos with a kitten narrator
 """
 
 import os
+import base64
+import io
 from typing import TypedDict
 from langgraph.graph import StateGraph, END
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from dotenv import load_dotenv
+import PyPDF2
+from pptx import Presentation
 
 # Import existing voiceover function
 from voiceover.voiceover import generateSpeech
@@ -27,6 +31,8 @@ os.makedirs("output", exist_ok=True)
 class State(TypedDict):
     """State for the LangGraph pipeline"""
     notes: str
+    file_data: str  # base64 encoded file
+    file_type: str  # 'pdf', 'pptx', or 'text'
     pure_script: str  # Pure narration only (for voiceover)
     script_with_scenes: str  # Full script with scenes
     audio_path: str
@@ -34,15 +40,121 @@ class State(TypedDict):
     error: str
 
 
+def extract_text_from_pdf_bytes(file_bytes: bytes) -> str:
+    """Extract text from PDF bytes"""
+    try:
+        text = []
+        pdf_reader = PyPDF2.PdfReader(io.BytesIO(file_bytes))
+        
+        print(f"   PDF has {len(pdf_reader.pages)} pages")
+        
+        for page_num, page in enumerate(pdf_reader.pages, 1):
+            try:
+                page_text = page.extract_text()
+                if page_text and page_text.strip():
+                    text.append(f"--- Page {page_num} ---\n{page_text.strip()}")
+                    print(f"   Extracted {len(page_text)} chars from page {page_num}")
+                else:
+                    print(f"   ⚠️ Page {page_num} has no extractable text (might be image-based)")
+            except Exception as e:
+                print(f"   ⚠️ Error extracting page {page_num}: {e}")
+        
+        result = "\n\n".join(text)
+        
+        if not result.strip():
+            return "ERROR: This PDF appears to contain no extractable text. It may be a scanned document or image-based PDF. Please provide a text-based PDF or paste the content manually."
+        
+        return result
+    except Exception as e:
+        print(f"   ❌ PDF extraction error: {e}")
+        import traceback
+        traceback.print_exc()
+        return f"ERROR: Failed to extract PDF content: {str(e)}"
+
+
+def extract_text_from_pptx_bytes(file_bytes: bytes) -> str:
+    """Extract text from PowerPoint bytes"""
+    try:
+        text = []
+        prs = Presentation(io.BytesIO(file_bytes))
+        
+        print(f"   PowerPoint has {len(prs.slides)} slides")
+        
+        for slide_num, slide in enumerate(prs.slides, 1):
+            slide_text = [f"--- Slide {slide_num} ---"]
+            for shape in slide.shapes:
+                if hasattr(shape, "text") and shape.text.strip():
+                    slide_text.append(shape.text.strip())
+            if len(slide_text) > 1:  # Only add if there's text beyond the header
+                text.append("\n".join(slide_text))
+                print(f"   Extracted text from slide {slide_num}")
+        
+        result = "\n\n".join(text)
+        
+        if not result.strip():
+            return "ERROR: This PowerPoint contains no extractable text. Please provide a file with text content."
+        
+        return result
+    except Exception as e:
+        print(f"   ❌ PowerPoint extraction error: {e}")
+        import traceback
+        traceback.print_exc()
+        return f"ERROR: Failed to extract PowerPoint content: {str(e)}"
+
+
+
 def parse_notes(state: State) -> State:
-    """Node 1: Parse and validate lecture notes"""
+    """Node 1: Parse and validate lecture notes OR extract from file"""
     print("📝 Parsing lecture notes...")
     
-    if not state.get("notes"):
-        state["error"] = "No notes provided"
+    if state.get("error"):
         return state
     
-    print(f"✅ Notes loaded: {len(state['notes'])} characters")
+    try:
+        # Check if file data is provided
+        if state.get("file_data") and state.get("file_type"):
+            file_type = state["file_type"].lower()
+            
+            # Skip processing if file_type is 'text' (meaning no file uploaded)
+            if file_type == "text":
+                notes = state.get("notes", "")
+                if not notes or len(notes.strip()) < 10:
+                    state["error"] = "Notes are too short or empty"
+                    return state
+                print(f"✅ Notes loaded: {len(notes)} characters")
+                return state
+            
+            # Decode base64 file
+            print(f"📄 Processing {file_type} file...")
+            file_bytes = base64.b64decode(state["file_data"])
+            print(f"   File size: {len(file_bytes)} bytes")
+            
+            # Extract text based on file type
+            if file_type == "pdf":
+                notes = extract_text_from_pdf_bytes(file_bytes)
+            elif file_type in ["pptx", "ppt"]:
+                notes = extract_text_from_pptx_bytes(file_bytes)
+            else:
+                state["error"] = f"Unsupported file type: {file_type}"
+                return state
+            
+            state["notes"] = notes
+            print(f"✅ Extracted text from {file_type}: {len(notes)} characters")
+            print(f"   Preview: {notes[:200]}...")
+        else:
+            # Use text notes directly
+            notes = state.get("notes", "")
+            if not notes or len(notes.strip()) < 10:
+                state["error"] = "Notes are too short or empty"
+                return state
+            print(f"✅ Notes loaded: {len(notes)} characters")
+        
+    except Exception as e:
+        state["error"] = f"Note parsing failed: {str(e)}"
+        print(f"❌ {state['error']}")
+        import traceback
+        traceback.print_exc()
+    
     return state
 
 
@@ -56,8 +168,9 @@ def generate_script(state: State) -> State:
     llm = ChatOpenAI(model="gpt-4o", temperature=0.7, api_key=OPENAI_API_KEY)
     
     # Updated prompt to generate both pure script and script with scenes
-    user_prompt = f"""
-Write a 30-second script for a 'Kitty Explains' video on the following topic: {state['notes']}. 
+    # Use a template variable to avoid f-string issues with curly braces
+    user_prompt = """
+Write a 30-second script for a 'Kitty Explains' video on the following topic: {notes}
 
 IMPORTANT - The script MUST start with a question followed by "explained by cats":
 - Examples: "What is photosynthesis explained by cats?"
@@ -116,7 +229,7 @@ etc.
         ])
         
         chain = prompt | llm
-        response = chain.invoke({})
+        response = chain.invoke({"notes": state['notes']})
         
         script = response.content
         
@@ -319,6 +432,8 @@ def run_pipeline(lecture_notes: str):
     # Run pipeline
     result = graph.invoke({
         "notes": lecture_notes,
+        "file_data": "",
+        "file_type": "text",
         "pure_script": "",
         "script_with_scenes": "",
         "audio_path": "",

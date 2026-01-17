@@ -32,16 +32,8 @@ def drawFrame(frameNum,paragraph,emotion,imageNum,pose,phoneNum,poseTimeSinceLas
         preJF = getJiggle(poseTimeSinceLast,0.06,0.6)-getJiggle(poseTimeTillNext,0.06,0.6)
         jiggleFactor = pow(1.07,preJF)
 
-    blinker = 0
-    blinkFactor = poseTimeSinceLast%60
-    if blinkFactor == 57 or blinkFactor == 58:
-        blinker = 2
-    elif blinkFactor >= 56:
-        blinker = 1
-
     poseIndex = emotion*5+pose
-    poseIndexBlinker = poseIndex*3+blinker
-    body = Image.open("poses/pose"+"{:04d}".format(poseIndexBlinker+1)+".png")
+    body = Image.open("poses/pose"+"{:04d}".format(poseIndex+1)+".png")
 
     mouthImageNum = phoneNum+1
     if EMOTION_POSITIVITY[emotion] == 0:

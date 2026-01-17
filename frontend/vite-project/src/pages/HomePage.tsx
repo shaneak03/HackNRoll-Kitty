@@ -49,12 +49,14 @@ function TextInput({
           disabled={!!selectedFile}
           style={{
             height: "300px",
+            minHeight: "200px",
             padding: "1rem",
             borderRadius: "1rem",
             border: "1px solid var(--clr-neutral-300)",
             backgroundColor: selectedFile ? "var(--clr-neutral-200)" : "var(--clr-neutral-100)",
             outline: "none",
             opacity: selectedFile ? 0.5 : 1,
+            resize: "vertical",
           }}
         />
         

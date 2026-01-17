@@ -180,7 +180,7 @@ def generate_script(state: State) -> State:
     # Updated prompt to generate both pure script and script with scenes
     # Use a template variable to avoid f-string issues with curly braces
     user_prompt = """
-Write a 30-second script for a 'Kitty Explains' video on the following topic: {notes}
+Write a 120 word script for a 'Kitty Explains' video on the following topic: {notes}
 
 IMPORTANT - The script MUST start with a question followed by "explained by cats":
 - Examples: "What is photosynthesis explained by cats?"
@@ -194,11 +194,17 @@ The script should:
 2. Follow with Kitty explaining the concept
 3. Be humorous and engaging
 4. Refer to the cat as "Kitty"
-5. Keep it concise for a 30-second video
+5. 400 words approximately
 6. Use <emotion> tags to indicate expressions from one of 6 emotions: 'happy', 'explain', 'sad', 'angry', 'confused', 'rq' (rhetorical question)
+7. Use every emotion in your explanation
+8. Actively use *sad* and *angry* emotions to introduce problems, frustrations, failures, or stakes:
+   - Use **sad** to show loss, disappointment, confusion, or why something feels broken or unfair
+   - Use **angry** to express urgency, conflict, inefficiency, mistakes, or why the problem demands a solution
+   - These negative emotions should help create narrative tension and clearly motivate *why* the concept matters
+9. Resolve the conflict by transitioning from sad/angry into explain and happy emotions as understanding improves
 
 Example opening:
-"How does binary search work explained by cats? Well, imagine Kitty trying to find his favorite toy in a sorted pile..."
+"How does binary search work explained by cats? Well, imagine Kitty angrily tearing apart the house because finding toys one by one is slow and miserable..."
 
 Please provide TWO versions:
 
@@ -211,8 +217,8 @@ Please provide TWO versions:
 For the SCRIPT WITH EMOTIONS, consider the context of the emotion:
 - Explain: "Kitty has a yearly tradition of buying lottery tickets every June"
 - Happy: "Kitty just won the lottery!"
-- Sad: "Kitty lost his lottery ticket"
-- Angry: "Kitty just caught his friend stealing his lottery ticket"
+- Sad: "Kitty lost his lottery ticket and feels hopeless"
+- Angry: "Kitty is furious after discovering his friend wasted all his lottery money"
 - Confused: "Kitty can't figure out why his lottery ticket numbers don't match"
 - Rq: "Why would anyone buy a lottery ticket anyway?"
 
@@ -224,6 +230,7 @@ Format your response exactly like this:
 <emotion> [dialogue 1]
 <emotion> [dialogue 2]
 etc.
+
 """
     
     try:

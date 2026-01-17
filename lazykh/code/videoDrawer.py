@@ -5,7 +5,8 @@ from PIL import Image
 import math
 import shutil
 
-FRAME_START_RENDER_AT  = 0
+# Constants
+FRAME_START_RENDER_AT = 0
 PRINT_EVERY = 10
 FRAME_RATE = 30
 PARTS_COUNT = 5
@@ -14,7 +15,6 @@ W_H = 1920
 W_M = 20
 EMOTION_POSITIVITY = [1,1,0,0,0,1]
 POSE_COUNT = 30
-
 MAX_JIGGLE_TIME = 7
 
 def getJiggle(x, fader, multiplier):
@@ -25,7 +25,7 @@ def getJiggle(x, fader, multiplier):
 def drawFrame(frameNum,paragraph,emotion,imageNum,pose,phoneNum,poseTimeSinceLast,poseTimeTillNext):
     global MOUTH_COOR
     
-    frame = Image.open("backgrounds/white.png")
+    frame = Image.open("lazykh/backgrounds/white.png")
 
     jiggleFactor = 1
     if ENABLE_JIGGLING:
@@ -33,12 +33,12 @@ def drawFrame(frameNum,paragraph,emotion,imageNum,pose,phoneNum,poseTimeSinceLas
         jiggleFactor = pow(1.07,preJF)
 
     poseIndex = emotion*5+pose
-    body = Image.open("poses/pose"+"{:04d}".format(poseIndex+1)+".png")
+    body = Image.open("lazykh/poses/pose"+"{:04d}".format(poseIndex+1)+".png")
 
     mouthImageNum = phoneNum+1
     if EMOTION_POSITIVITY[emotion] == 0:
         mouthImageNum += 11
-    mouth = Image.open("mouths/mouth"+"{:04d}".format(mouthImageNum)+".png")
+    mouth = Image.open("lazykh/mouths/mouth"+"{:04d}".format(mouthImageNum)+".png")
 
     if MOUTH_COOR[poseIndex,2] < 0:
         mouth = mouth.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
@@ -152,86 +152,94 @@ def frameOf(p, offset):
     frames = timestepToFrames(timestep)
     return frames
 
-parser = argparse.ArgumentParser(description='blah')
-parser.add_argument('--input_file', type=str,  help='the script')
-parser.add_argument('--jiggly_transitions', type=str,  help='Do you want the stick figure to jiggle when transitioning between poses?')
-parser.add_argument('--frame_caching', type=str,  help='Do you want the program to duplicate frame files if they look exactly the same? This will speed up rendering by 5x. By default, this is already enabled!')
-args = parser.parse_args()
-INPUT_FILE = args.input_file
-ENABLE_JIGGLING = (args.jiggly_transitions == "T")
-ENABLE_FRAME_CACHING = (args.frame_caching != "F")
+def Drawer(input_file, jiggly_transitions=False):
+    """parser = argparse.ArgumentParser(description='blah')
+    parser.add_argument('--input_file', type=str,  help='the script')
+    parser.add_argument('--jiggly_transitions', type=str,  help='Do you want the stick figure to jiggle when transitioning between poses?')
+    parser.add_argument('--frame_caching', type=str,  help='Do you want the program to duplicate frame files if they look exactly the same? This will speed up rendering by 5x. By default, this is already enabled!')
+    args = parser.parse_args()
+    INPUT_FILE = args.input_file
+    ENABLE_JIGGLING = (args.jiggly_transitions == "T")
+    ENABLE_FRAME_CACHING = (args.frame_caching != "F")"""
+    
+    # Declare global variables used by helper functions
+    global INPUT_FILE, ENABLE_JIGGLING, MOUTH_COOR
+    global phonemeTimeline, phonemesPerFrame, schedules, indicesOn
+    
+    INPUT_FILE = input_file
+    ENABLE_JIGGLING = jiggly_transitions
 
-f = open(INPUT_FILE+"_schedule.csv","r+")
-scheduleLines = f.read().split("\nSECTION\n")
-f.close()
+    f = open(input_file+"_schedule.csv","r+")
+    scheduleLines = f.read().split("\nSECTION\n")
+    f.close()
 
-schedules = [None]*PARTS_COUNT
-for i in range(PARTS_COUNT):
-    schedules[i] = scheduleLines[i].split("\n")
-    if i == 4:
-        schedules[i] = schedules[i][0:-1]
-lastParts = schedules[-1][-2].split(",")
-lastTimestamp = float(lastParts[0])
-FRAME_COUNT = timestepToFrames(lastTimestamp+1)
-phonemeTimeline = []
-for i in range(len(schedules[4])):
-    parts = schedules[4][i].split(",")
-    timestamp = float(parts[0])
-    framestamp = timestepToFrames(timestamp)
-    if i >= 1 and framestamp <= phonemeTimeline[-1][1]: # we have a 0-frame phoneme! Try to fix it.
-        if i >= 2 and phonemeTimeline[-2][1] <= framestamp-2:
-            phonemeTimeline[-1][1] = framestamp-1 # shift previous one back
-        else:
-            framestamp += 1 # shift current one forward
-    phoneme = parts[2]
-    phonemeTimeline.append([phoneme,framestamp])
-phonemeTimeline.append(["end",FRAME_COUNT])
-phonemesPerFrame = np.zeros(FRAME_COUNT,dtype='int32')
-for i in range(len(phonemeTimeline)-1):
-    setPhoneme(i)
+    schedules = [None]*PARTS_COUNT
+    for i in range(PARTS_COUNT):
+        schedules[i] = scheduleLines[i].split("\n")
+        if i == 4:
+            schedules[i] = schedules[i][0:-1]
+    lastParts = schedules[-1][-2].split(",")
+    lastTimestamp = float(lastParts[0])
+    FRAME_COUNT = timestepToFrames(lastTimestamp+1)
+    phonemeTimeline = []
+    for i in range(len(schedules[4])):
+        parts = schedules[4][i].split(",")
+        timestamp = float(parts[0])
+        framestamp = timestepToFrames(timestamp)
+        if i >= 1 and framestamp <= phonemeTimeline[-1][1]: # we have a 0-frame phoneme! Try to fix it.
+            if i >= 2 and phonemeTimeline[-2][1] <= framestamp-2:
+                phonemeTimeline[-1][1] = framestamp-1 # shift previous one back
+            else:
+                framestamp += 1 # shift current one forward
+        phoneme = parts[2]
+        phonemeTimeline.append([phoneme,framestamp])
+    phonemeTimeline.append(["end",FRAME_COUNT])
+    phonemesPerFrame = np.zeros(FRAME_COUNT,dtype='int32')
+    for i in range(len(phonemeTimeline)-1):
+        setPhoneme(i)
 
-f = open(INPUT_FILE+".txt","r+")
-origScript = f.read().split("\n")
-f.close()
-#while "" in origStr:
-#    origStr.remove("")
+    f = open(input_file+".txt","r+")
+    origScript = f.read().split("\n")
+    f.close()
+    #while "" in origStr:
+    #    origStr.remove("")
 
 
-f = open("code/mouthCoordinates.csv","r+")
-mouthCoordinatesStr = f.read().split("\n")
-f.close()
-MOUTH_COOR = np.zeros((POSE_COUNT,5))
-for i in range(len(mouthCoordinatesStr)):
-    parts = mouthCoordinatesStr[i].split(",")
-    for j in range(5):
-        MOUTH_COOR[i,j] = float(parts[j])
-MOUTH_COOR[:,0:2] *= 3 #upscale for 1080p, not 360p
+    f = open("lazykh/code/mouthCoordinates.csv","r+")
+    mouthCoordinatesStr = f.read().split("\n")
+    f.close()
+    MOUTH_COOR = np.zeros((POSE_COUNT,5))
+    for i in range(len(mouthCoordinatesStr)):
+        parts = mouthCoordinatesStr[i].split(",")
+        for j in range(5):
+            MOUTH_COOR[i,j] = float(parts[j])
+    MOUTH_COOR[:,0:2] *= 3 #upscale for 1080p, not 360p
 
-FRAME_CACHES = {}
-indicesOn = [-1]*(PARTS_COUNT-1)
-for frame in range(0,FRAME_COUNT):
-    for p in range(PARTS_COUNT-1):
-        frameOfNext = frameOf(p,1)
-        if frameOfNext >= 0 and frame >= frameOfNext:
-            indicesOn[p] += 1
-    paragraph = stateOf(0)
-    emotion = stateOf(1)
-    imageNum = stateOf(2)
-    pose = stateOf(3)
-    timeSincePrevPoseChange = frame-frameOf(3,0)
-    timeUntilNextPoseChange = frameOf(3,1)-frame
+    FRAME_CACHES = {}
+    indicesOn = [-1]*(PARTS_COUNT-1)
+    for frame in range(0,FRAME_COUNT):
+        for p in range(PARTS_COUNT-1):
+            frameOfNext = frameOf(p,1)
+            if frameOfNext >= 0 and frame >= frameOfNext:
+                indicesOn[p] += 1
+        paragraph = stateOf(0)
+        emotion = stateOf(1)
+        imageNum = stateOf(2)
+        pose = stateOf(3)
+        timeSincePrevPoseChange = frame-frameOf(3,0)
+        timeUntilNextPoseChange = frameOf(3,1)-frame
 
-    TSPPC_cache = min(timeSincePrevPoseChange, MAX_JIGGLE_TIME) if ENABLE_JIGGLING else 0
-    TUNPC_cache = min(timeUntilNextPoseChange, MAX_JIGGLE_TIME) if ENABLE_JIGGLING else 0
+        TSPPC_cache = 0
+        TUNPC_cache = 0
 
-    thisFrameInfo = infoToString([paragraph, emotion, pose, phonemesPerFrame[frame], TSPPC_cache, TUNPC_cache])
-    if ENABLE_FRAME_CACHING and thisFrameInfo not in FRAME_CACHES:
-        FRAME_CACHES[thisFrameInfo] = frame
+        thisFrameInfo = infoToString([paragraph, emotion, pose, phonemesPerFrame[frame], TSPPC_cache, TUNPC_cache])
+        if True and thisFrameInfo not in FRAME_CACHES:
+            FRAME_CACHES[thisFrameInfo] = frame
 
-    if frame >= FRAME_START_RENDER_AT:
-        if ENABLE_FRAME_CACHING and FRAME_CACHES[thisFrameInfo] < frame:
-            duplicateFrame(FRAME_CACHES[thisFrameInfo], frame)
-        else:
-            drawFrame(frame,paragraph,emotion,imageNum,pose,phonemesPerFrame[frame],timeSincePrevPoseChange,timeUntilNextPoseChange)
-        if frame%PRINT_EVERY == 0 or frame == FRAME_COUNT-1:
-            print(f"Just drew frame {frame+1} / {FRAME_COUNT}")
+        if frame >= FRAME_START_RENDER_AT:
+            if True and FRAME_CACHES[thisFrameInfo] < frame:
+                duplicateFrame(FRAME_CACHES[thisFrameInfo], frame)
+            else:
+                drawFrame(frame,paragraph,emotion,imageNum,pose,phonemesPerFrame[frame],timeSincePrevPoseChange,timeUntilNextPoseChange)
+            if frame%PRINT_EVERY == 0 or frame == FRAME_COUNT-1:
+                print(f"Just drew frame {frame+1} / {FRAME_COUNT}")

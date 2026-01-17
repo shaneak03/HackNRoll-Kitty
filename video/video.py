@@ -3,6 +3,7 @@ import whisper
 import subprocess
 import shutil
 from imageio_ffmpeg import get_ffmpeg_exe
+from lazykh.code import converter, gentleScriptWriter, gentlePost, scheduler, videoDrawer, videoFinisher
 
 # Get the FFmpeg executable path from imageio-ffmpeg
 ffmpeg_path = get_ffmpeg_exe()
@@ -21,7 +22,7 @@ if ffmpeg_dir not in os.environ.get("PATH", ""):
 # Configure MoviePy to use imageio-ffmpeg
 os.environ["IMAGEIO_FFMPEG_EXE"] = ffmpeg_path
 
-from moviepy.editor import VideoClip, ImageClip, AudioFileClip
+from moviepy import VideoClip, ImageClip, AudioFileClip
 
 def processAudioFile(path):
     audio_clip = AudioFileClip(path)
@@ -130,28 +131,23 @@ def generateVideo(closed_png, open_png, video_file, output_file, path="voiceover
         audio_clip, duration = processAudioFile(path)
         print(f"  ✓ Audio duration: {duration:.2f}s")
 
-        print(f"  [2/6] Loading images: {closed_png}, {open_png}")
-        frame_closed, frame_open = fetchStaticImages(closed_png, open_png)
-        print(f"  ✓ Images loaded")
-
         print(f"  [3/6] Transcribing with Whisper...")
         transcription, combined_times = parseWithWhisper(path)
         print(f"  ✓ Transcription complete")
 
-        print(f"  [4/6] Creating video clip...")
-        video = VideoClip(lambda t: make_frame(frame_closed, frame_open, FLAP_INTERVAL, combined_times, t), duration=duration)
-        print(f"  ✓ Video clip created")
-        
-        print(f"  [5/6] Saving video with MoviePy to {video_file}...")
-        saveWithMoviePy(video, audio_clip, video_file)
-        print(f"  ✓ Video saved")
+        converter.convert_audio_and_script('output/voiceover.mp3', 'lazykh/output/script.wav', 'output/script_with_scenes.txt', 'lazykh/output/script.txt')
+        gentleScriptWriter.create_gentle_script('lazykh/output/script')
+        gentlePost.align_audio('lazykh/output/script.wav', 'lazykh/output/script_g.txt', 'lazykh/output/script.json')
+        scheduler.create_schedule('lazykh/output/script')
+        videoDrawer.Drawer('lazykh/output/script')
+        videoFinisher.finish_video('lazykh/output/script', keep_frames=False)
 
         print(f"  [6/6] Writing subtitle file...")
         writeToSrtFile(SRT_FILE, transcription)
         print(f"  ✓ Subtitles written")
 
         print(f"  Adding subtitles with FFmpeg...")
-        saveWithFFMPEG(video_file, SRT_FILE, output_file)
+        saveWithFFMPEG('lazykh/output/script_final.mp4', SRT_FILE, output_file)
         print(f"  ✓ Final video complete")
 
         if os.path.exists(video_file):

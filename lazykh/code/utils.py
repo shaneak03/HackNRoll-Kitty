@@ -1,27 +1,7 @@
 # There is probably a smarter, more efficient way to do this with regex. This runs nearly instantly though, so no big deal.
 import re
 
-def removeTags(script):
-  TO_REMOVE = ["[","]","/"]
 
-  newScript = script.replace("-"," ")
-  for charToRemove in TO_REMOVE:
-      newScript = newScript.replace(charToRemove,"")
-
-  while "<" in newScript:
-      start = newScript.index("<")
-      end = newScript.index(">")+1
-      newScript = newScript[:start]+newScript[end:]
-  while "  " in newScript:
-      newScript = newScript.replace("  "," ")
-  while "\n " in newScript:
-      newScript = newScript.replace("\n ","\n")
-  while " \n" in newScript:
-      newScript = newScript.replace(" \n","\n")
-  while newScript[0] == " ":
-      newScript = newScript[1:]
-
-  return newScript
 
 def getFilenameOfLine(line):
     topic = getTopic(line)

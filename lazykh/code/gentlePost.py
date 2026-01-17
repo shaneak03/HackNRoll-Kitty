@@ -98,5 +98,4 @@ if __name__ == "__main__":
         conservative=args.conservative,
         disfluency=args.disfluency
     )
-    
     exit(0 if success else 1)

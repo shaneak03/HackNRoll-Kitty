@@ -2,6 +2,9 @@
 *.env
 venv/
 env/
+*.mp3
+*.mp4
+*.png
 
 # Output files
 output/

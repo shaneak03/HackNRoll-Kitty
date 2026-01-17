@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 
 # Import existing voiceover function
 from voiceover.voiceover import generateSpeech
+from video.video import generateVideo
 
 # Load environment variables
 load_dotenv()
@@ -220,8 +221,51 @@ def save_script_to_file(state: State) -> State:
     return state
 
 
+def generate_video(state: State) -> State:
+    """Node 5: Generate video from voiceover MP3"""
+    print("🤖 Generating video...")
+    
+    if state.get("error"):
+        return state
+    
+    try:
+        audio_path = state.get("audio_path", "")
+        if not audio_path or not os.path.exists(audio_path):
+            state["error"] = "Voiceover audio not found"
+            print(f"❌ {state['error']}")
+            return state
+        
+        CLOSED_PNG = "video/cat-closed.png"
+        OPEN_PNG = "video/cat-open.png"
+        VIDEO_FILE = "output/kitty.mp4"
+        OUTPUT_FILE = "output/kitty_explains.mp4"
+
+        generateVideo(CLOSED_PNG, OPEN_PNG, VIDEO_FILE, OUTPUT_FILE, audio_path)
+        
+        # The function saves to "output.mp3" by default, let's move it to our output folder
+        state["video_path"] = OUTPUT_FILE
+        print(f"✅ Video saved: {OUTPUT_FILE}")
+
+        if os.path.exists(VIDEO_FILE):
+            os.remove(VIDEO_FILE)
+            os.rename(VIDEO_FILE, OUTPUT_FILE)
+        
+        if os.path.exists(audio_path):
+            os.remove(audio_path)
+            
+        else:
+            state["video_path"] = None
+            print("⚠️ Video file not generated")
+
+    except Exception as e:
+        state["error"] = f"Video generation failed: {e}"
+        print(f"❌ {state['error']}")
+
+    return state
+
+
 def output_result(state: State) -> State:
-    """Node 5: Output final result"""
+    """Node 6: Output final result"""
     print("\n" + "="*50)
     
     if state.get("error"):
@@ -249,6 +293,7 @@ def create_pipeline():
     workflow.add_node("generate_script", generate_script)
     workflow.add_node("generate_voiceover", generate_voiceover)
     workflow.add_node("save_script_to_file", save_script_to_file)
+    workflow.add_node("generate_video", generate_video)
     workflow.add_node("output_result", output_result)
     
     # Define edges
@@ -256,7 +301,8 @@ def create_pipeline():
     workflow.add_edge("parse_notes", "generate_script")
     workflow.add_edge("generate_script", "generate_voiceover")
     workflow.add_edge("generate_voiceover", "save_script_to_file")
-    workflow.add_edge("save_script_to_file", "output_result")
+    workflow.add_edge("save_script_to_file", "generate_video")
+    workflow.add_edge("generate_video", "output_result")
     workflow.add_edge("output_result", END)
     
     return workflow.compile()

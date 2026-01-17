@@ -31,12 +31,9 @@ def parseWithWhisper(path):
     return result, combined_times
 
 
-def fetchStaticImages():
-    CLOSED_PNG = "cat-closed.png"
-    OPEN_PNG = "cat-open.png"
-
-    cat_closed = ImageClip(CLOSED_PNG)
-    cat_open   = ImageClip(OPEN_PNG)
+def fetchStaticImages(closed_png, open_png):
+    cat_closed = ImageClip(closed_png)
+    cat_open   = ImageClip(open_png)
     frame_closed = cat_closed.get_frame(0)
     frame_open   = cat_open.get_frame(0)
 
@@ -96,7 +93,7 @@ def saveWithFFMPEG(video_file, srt_file, output_file):
         "ffmpeg",
         "-y",  # overwrite output if exists
         "-i", video_file,
-        "-vf", f"subtitles={srt_file}:force_style='FontName=Comic Sans MS,FontSize=16,PrimaryColour=&H000000&,MarginV=200,Outline=0,Shadow=0'",
+        "-vf", f"subtitles={srt_file}:force_style='FontName=Comic Sans MS,FontSize=16,PrimaryColour=&H000000&,MarginV=220,Outline=0,Shadow=0'",
         "-c:a", "copy",  # keep original audio
         output_file
     ]
@@ -104,34 +101,32 @@ def saveWithFFMPEG(video_file, srt_file, output_file):
     print(f"Final video saved to {output_file}")
 
 
-def generateVideo(path):
+def generateVideo(closed_png, open_png, video_file, output_file, path="voiceover.mp3"):
     FLAP_INTERVAL = 0.1  # seconds
-    SRT_FILE = "subs.srt"
-    VIDEO_FILE = "kitty.mp4"
-    OUTPUT_FILE = "kitty_explains.mp4"
+    SRT_FILE = "output/subs.srt"
 
     audio_clip, duration = processAudioFile(path)
 
-    frame_closed, frame_open = fetchStaticImages()
+    frame_closed, frame_open = fetchStaticImages(closed_png, open_png)
 
     transcription, combined_times = parseWithWhisper(path)
 
     video = VideoClip(lambda t: make_frame(frame_closed, frame_open, FLAP_INTERVAL, combined_times, t), duration=duration)
-    saveWithMoviePy(video, audio_clip, VIDEO_FILE)
+    saveWithMoviePy(video, audio_clip, video_file)
 
     writeToSrtFile(SRT_FILE, transcription)
 
-    saveWithFFMPEG(VIDEO_FILE, SRT_FILE, OUTPUT_FILE)
+    saveWithFFMPEG(video_file, SRT_FILE, output_file)
 
-    if os.path.exists(VIDEO_FILE):
-        os.remove(VIDEO_FILE)
+    if os.path.exists(video_file):
+        os.remove(video_file)
     
     if os.path.exists(SRT_FILE):
         os.remove(SRT_FILE)
 
 
 def main():
-    generateVideo("output.mp3")
+    generateVideo()
 
 if __name__ == "__main__":
     main()

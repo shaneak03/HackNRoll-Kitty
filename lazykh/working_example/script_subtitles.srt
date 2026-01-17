@@ -1,0 +1,56 @@
+1
+00:00:00,090 --> 00:00:02,399
+Why is binary search so fast explained by
+
+2
+00:00:02,410 --> 00:00:02,930
+cats
+
+3
+00:00:03,629 --> 00:00:05,450
+Well imagine Kitty trying to find his favorite
+
+4
+00:00:05,450 --> 00:00:07,550
+toy in a sorted pile of yarn balls
+
+5
+00:00:08,330 --> 00:00:10,669
+Kitty starts by investigating the middle ball If
+
+6
+00:00:10,669 --> 00:00:12,160
+it's his toy Kitty's day is made
+
+7
+00:00:12,639 --> 00:00:14,210
+If not and the toy is smaller he
+
+8
+00:00:14,210 --> 00:00:15,810
+ignores the right half and checks the left
+
+9
+00:00:16,209 --> 00:00:17,760
+If bigger he skips the left and checks
+
+10
+00:00:17,760 --> 00:00:18,229
+the right
+
+11
+00:00:18,980 --> 00:00:20,829
+Kitty repeats this until he finds his toy
+
+12
+00:00:20,829 --> 00:00:22,019
+or runs out of yarn balls
+
+13
+00:00:22,639 --> 00:00:25,049
+This is way faster than checking each one
+
+14
+00:00:25,289 --> 00:00:26,910
+especially when Kitty is in a hurry
+

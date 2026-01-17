@@ -1,0 +1,8 @@
+"Why is binary search so fast, explained by cats?"
+"Well, imagine Kitty trying to find his favorite toy in a sorted pile of yarn balls."
+"Kitty starts by investigating the middle ball."
+"If it's his toy, Kitty's day is made!"
+"If not, and the toy is smaller, he ignores the right half and checks the left."
+"If bigger, he skips the left and checks the right."
+"Kitty repeats this until he finds his toy or runs out of yarn balls."
+"This method is way faster than checking each one, especially when Kitty is in a hurry!"

@@ -72,6 +72,7 @@ The script should:
 3. Be humorous and engaging
 4. Refer to the cat as "Kitty"
 5. Keep it concise for a 30-second video
+6. Use <emotion> tags to indicate expressions from one of 6 emotions: 'happy', 'explain', 'sad', 'angry', 'confused', 'rq' (rhetorical question)
 
 Example opening:
 "How does binary search work explained by cats? Well, imagine Kitty trying to find his favorite toy in a sorted pile..."
@@ -81,32 +82,24 @@ Please provide TWO versions:
 1. PURE SCRIPT (narration only):
 [Just the dialogue/narration that will be spoken, starting with the question]
 
-2. SCRIPT WITH SCENES:
-[Include detailed scene descriptions with specific visual elements, cat expressions/poses, and the narration]
+2. SCRIPT WITH EMOTIONS (narration and emotions only):
+[Just the dialogue/narration and emotions that will be spoken/shown, starting with the question]
 
-For the SCRIPT WITH SCENES, make each scene description VERY DETAILED and VISUAL:
-- Describe the cat's expression, pose, and what they're doing
-- Mention specific props, objects, or visual elements in the scene
-- Include colors, lighting, mood
-
-Format like this:
-[Scene 1: Description of cat's pose/expression, specific props and objects visible, lighting and mood]
-Kitty: [dialogue here - starting with the question]
-
-[Scene 2: Another detailed visual description]
-Kitty: [dialogue here]
+For the SCRIPT WITH EMOTIONS, consider the context of the emotion:
+- Explain: "Kitty has a yearly tradition of buying lottery tickets every June"
+- Happy: "Kitty just won the lottery!"
+- Sad: "Kitty lost his lottery ticket"
+- Angry: "Kitty just caught his friend stealing his lottery ticket"
+- Confused: "Kitty can't figure out why his lottery ticket numbers don't match"
+- Rq: "Why would anyone buy a lottery ticket anyway?"
 
 Format your response exactly like this:
 ---PURE SCRIPT---
 [pure narration here - starting with an engaging question]
 
----SCRIPT WITH SCENES---
-[Scene 1: detailed description]
-Kitty: [Engaging question about the topic]? [rest of dialogue]
-
-[Scene 2: detailed description]
-Kitty: dialogue
-
+---SCRIPT WITH EMOTIONS---
+<emotion> [dialogue 1]
+<emotion> [dialogue 2]
 etc.
 """
     
@@ -125,8 +118,8 @@ etc.
             return state
         
         # Parse the two versions from the LLM response
-        if "---PURE SCRIPT---" in script and "---SCRIPT WITH SCENES---" in script:
-            parts = script.split("---SCRIPT WITH SCENES---")
+        if "---PURE SCRIPT---" in script and "---SCRIPT WITH EMOTIONS---" in script:
+            parts = script.split("---SCRIPT WITH EMOTIONS---")
             state["pure_script"] = parts[0].replace("---PURE SCRIPT---", "").strip()
             state["script_with_scenes"] = parts[1].strip()
         else:
@@ -208,8 +201,9 @@ def save_script_to_file(state: State) -> State:
         # Save full script with scenes
         full_script_path = "output/script_with_scenes.txt"
         with open(full_script_path, "w", encoding="utf-8") as f:
-            f.write("🐱 KITTY EXPLAINS - FULL SCRIPT WITH SCENES\n")
-            f.write("=" * 50 + "\n\n")
+            f.write(script_with_scenes)
+        full_script_path = "lazykh/render/out.txt"
+        with open(full_script_path, "w", encoding="utf-8") as f:
             f.write(script_with_scenes)
         
         print(f"✅ Script with scenes saved: {full_script_path}")

@@ -1,4 +1,5 @@
 import whisper
+import subprocess
 from moviepy.editor import VideoClip, ImageClip, AudioFileClip
 
 # --- 1. Load audio ---
@@ -50,11 +51,49 @@ def make_frame(t):
 # --- 5. Create video ---
 video = VideoClip(make_frame, duration=duration)
 video = video.set_audio(audio_clip)
+video_file = "kitty.mp4"
 
 # --- 6. Export ---
 video.write_videofile(
-    "kitty_video_flap.mp4",
+    video_file,
     fps=fps,
     codec="libx264",
     audio_codec="aac"
 )
+
+srt_file = "subs.srt"
+
+def seconds_to_srt_time(seconds):
+    h = int(seconds // 3600)
+    m = int((seconds % 3600) // 60)
+    s = int(seconds % 60)
+    ms = int((seconds - int(seconds)) * 1000)
+    return f"{h:02}:{m:02}:{s:02},{ms:03}"
+
+with open(srt_file, "w", encoding="utf-8") as f:
+    counter = 1
+    for segment in result["segments"]:
+        start = segment["start"]
+        end = segment["end"]
+        text = segment["text"].strip()
+        if not text:
+            continue
+        f.write(f"{counter}\n")
+        f.write(f"{seconds_to_srt_time(start)} --> {seconds_to_srt_time(end)}\n")
+        f.write(text + "\n\n")
+        counter += 1
+
+output_file = "kitty_explains.mp4"
+
+ffmpeg_cmd = [
+    "ffmpeg",
+    "-y",  # overwrite output if exists
+    "-i", video_file,
+    "-vf", f"subtitles={srt_file}:force_style='FontName=Arial,FontSize=16,PrimaryColour=&H000000&,MarginV=200,Outline=0,Shadow=0'",
+    "-c:a", "copy",  # keep original audio
+    output_file
+]
+
+print("Running FFmpeg to burn subtitles...")
+subprocess.run(ffmpeg_cmd, check=True)
+print(f"Final video saved to {output_file}")

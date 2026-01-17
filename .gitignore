@@ -8,6 +8,10 @@ env/
 # Output files
 output/
 
+# LangGraph
+.langgraph/
+*.langgraph
+
 # Python
 __pycache__/
 *.py[cod]

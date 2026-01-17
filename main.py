@@ -325,9 +325,6 @@ def save_script_to_file(state: State) -> State:
         full_script_path = "output/script_with_scenes.txt"
         with open(full_script_path, "w", encoding="utf-8") as f:
             f.write(script_with_scenes)
-        full_script_path = "lazykh/render/out.txt"
-        with open(full_script_path, "w", encoding="utf-8") as f:
-            f.write(script_with_scenes)
         
         print(f"✅ Script with scenes saved: {full_script_path}")
         

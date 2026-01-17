@@ -20,9 +20,10 @@ function TextInput({ onGenerate }: { onGenerate: (text: string) => void }) {
         style={{
           height: "300px",
           padding: "1rem",
-          borderRadius: ".75rem",
+          borderRadius: "1rem",
           border: "1px solid var(--clr-neutral-300)",
           backgroundColor: "var(--clr-neutral-100)",
+          outline: "none",
         }}
       />
       <button
@@ -32,10 +33,11 @@ function TextInput({ onGenerate }: { onGenerate: (text: string) => void }) {
           backgroundColor: "var(--clr-accent-400)",
           color: "var(--clr-neutral-100)",
           padding: "1rem",
-          borderRadius: ".75rem",
+          border: "none",
+          borderRadius: "1rem",
         }}
       >
-        Generate Video
+        Generate video
       </button>
     </section>
   );

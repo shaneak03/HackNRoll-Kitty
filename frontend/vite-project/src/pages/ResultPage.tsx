@@ -1,10 +1,4 @@
-function ResultView({
-  videoUrl,
-  onReset,
-}: {
-  videoUrl: string;
-  onReset: () => void;
-}) {
+function ResultView({ onReset }: { videoUrl: string; onReset: () => void; }) {
   return (
     <section
       style={{
@@ -17,17 +11,15 @@ function ResultView({
       <div
         style={{
           padding: "2rem",
-          border: "2px solid var(--clr-success)",
+          border: "2px solid var(--clr-accent-400)",
           borderRadius: "12px",
         }}
       >
-        <h2 style={{ color: "var(--clr-success)" }}>Video Ready!</h2>
+        <h2 style={{ color: "var(--clr-accent-400)" }}>Video Ready!</h2>
       </div>
 
       <div style={{ display: "flex", gap: "1rem" }}>
-        <a
-          href={videoUrl}
-          download
+        <button
           style={{
             backgroundColor: "var(--clr-neutral-800)",
             color: "var(--clr-neutral-100)",
@@ -35,9 +27,24 @@ function ResultView({
             borderRadius: "8px",
             textDecoration: "none",
           }}
+          onClick={() => {
+            // Fetch the video from backend
+            fetch("http://localhost:2025/video")
+              .then(res => res.blob())
+              .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "kitty_explains.mp4";
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+              });
+          }}
         >
           Download Video
-        </a>
+        </button>
 
         <button
           onClick={onReset}

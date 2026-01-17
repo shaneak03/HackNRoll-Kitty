@@ -4,7 +4,7 @@ Converts lecture notes into educational videos with a kitten narrator
 """
 
 import os
-from typing import TypedDict, Annotated
+from typing import TypedDict
 from langgraph.graph import StateGraph, END
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
@@ -58,28 +58,55 @@ def generate_script(state: State) -> State:
     user_prompt = f"""
 Write a 30-second script for a 'Kitty Explains' video on the following topic: {state['notes']}. 
 
-The script should:
-1. Summarize the content decently.
-2. Be humorous.
-3. Refer to the cat as "Kitty".
+IMPORTANT - The script MUST start with a question followed by "explained by cats":
+- Examples: "What is photosynthesis explained by cats?"
+- "How does binary search work explained by cats?"
+- "Why do we need recursion explained by cats?"
+- "Can quantum physics be explained by cats?"
+- Choose an engaging question format, then ALWAYS add "explained by cats"
 
-Example sentences for style: 
-"Kitty wants to find his car in a crowded parking lot. Kitty knows that the license plates are sorted."
+The script should:
+1. Open with an engaging question followed by "explained by cats"
+2. Follow with Kitty explaining the concept
+3. Be humorous and engaging
+4. Refer to the cat as "Kitty"
+5. Keep it concise for a 30-second video
+
+Example opening:
+"How does binary search work explained by cats? Well, imagine Kitty trying to find his favorite toy in a sorted pile..."
 
 Please provide TWO versions:
 
 1. PURE SCRIPT (narration only):
-[Just the dialogue/narration that will be spoken]
+[Just the dialogue/narration that will be spoken, starting with the question]
 
 2. SCRIPT WITH SCENES:
-[Include scene descriptions, visual directions, and the narration]
+[Include detailed scene descriptions with specific visual elements, cat expressions/poses, and the narration]
+
+For the SCRIPT WITH SCENES, make each scene description VERY DETAILED and VISUAL:
+- Describe the cat's expression, pose, and what they're doing
+- Mention specific props, objects, or visual elements in the scene
+- Include colors, lighting, mood
+
+Format like this:
+[Scene 1: Description of cat's pose/expression, specific props and objects visible, lighting and mood]
+Kitty: [dialogue here - starting with the question]
+
+[Scene 2: Another detailed visual description]
+Kitty: [dialogue here]
 
 Format your response exactly like this:
 ---PURE SCRIPT---
-[pure narration here]
+[pure narration here - starting with an engaging question]
 
 ---SCRIPT WITH SCENES---
-[full script with scenes here]
+[Scene 1: detailed description]
+Kitty: [Engaging question about the topic]? [rest of dialogue]
+
+[Scene 2: detailed description]
+Kitty: dialogue
+
+etc.
 """
     
     try:
@@ -114,7 +141,6 @@ Format your response exactly like this:
         state["error"] = f"Script generation failed: {e}"
         print(f"❌ {state['error']}")
     
-    return state
     return state
 
 
@@ -186,7 +212,6 @@ def save_script_to_file(state: State) -> State:
             f.write(script_with_scenes)
         
         print(f"✅ Script with scenes saved: {full_script_path}")
-        state["video_path"] = pure_script_path
         
     except Exception as e:
         state["error"] = f"Script save failed: {e}"

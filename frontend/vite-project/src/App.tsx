@@ -65,7 +65,6 @@ export default function App() {
       setStep("LOADING");
       const res = await generateKittyVideo(notes, file);
       console.log(res);
-      setVideoUrl(res.video_path || null);
       setStep("RESULT");
     } catch (error) {
       console.error("Generation failed:", error);

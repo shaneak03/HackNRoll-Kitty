@@ -26,7 +26,8 @@ os.makedirs("output", exist_ok=True)
 class State(TypedDict):
     """State for the LangGraph pipeline"""
     notes: str
-    script: str
+    pure_script: str  # Pure narration only (for voiceover)
+    script_with_scenes: str  # Full script with scenes
     audio_path: str
     video_path: str
     error: str
@@ -53,9 +54,10 @@ def generate_script(state: State) -> State:
     
     llm = ChatOpenAI(model="gpt-4o", temperature=0.7, api_key=OPENAI_API_KEY)
     
-    # Using the prompt style from script.py
+    # Updated prompt to generate both pure script and script with scenes
     user_prompt = f"""
 Write a 30-second script for a 'Kitty Explains' video on the following topic: {state['notes']}. 
+
 The script should:
 1. Summarize the content decently.
 2. Be humorous.
@@ -64,7 +66,20 @@ The script should:
 Example sentences for style: 
 "Kitty wants to find his car in a crowded parking lot. Kitty knows that the license plates are sorted."
 
-Produce only the script, nothing else.
+Please provide TWO versions:
+
+1. PURE SCRIPT (narration only):
+[Just the dialogue/narration that will be spoken]
+
+2. SCRIPT WITH SCENES:
+[Include scene descriptions, visual directions, and the narration]
+
+Format your response exactly like this:
+---PURE SCRIPT---
+[pure narration here]
+
+---SCRIPT WITH SCENES---
+[full script with scenes here]
 """
     
     try:
@@ -81,13 +96,25 @@ Produce only the script, nothing else.
             state["error"] = "Script generation returned empty result"
             return state
         
-        state["script"] = script
-        print(f"✅ Script generated: {len(script)} characters")
+        # Parse the two versions from the LLM response
+        if "---PURE SCRIPT---" in script and "---SCRIPT WITH SCENES---" in script:
+            parts = script.split("---SCRIPT WITH SCENES---")
+            state["pure_script"] = parts[0].replace("---PURE SCRIPT---", "").strip()
+            state["script_with_scenes"] = parts[1].strip()
+        else:
+            # Fallback: if format not followed, use the whole thing for both
+            state["pure_script"] = script
+            state["script_with_scenes"] = script
+        
+        print(f"✅ Script generated")
+        print(f"   Pure script: {len(state['pure_script'])} characters")
+        print(f"   Script with scenes: {len(state['script_with_scenes'])} characters")
         
     except Exception as e:
         state["error"] = f"Script generation failed: {e}"
         print(f"❌ {state['error']}")
     
+    return state
     return state
 
 
@@ -99,12 +126,21 @@ def generate_voiceover(state: State) -> State:
         return state
     
     try:
-        # Use the existing generateSpeech function from voiceover.py
-        generateSpeech(state["script"])
+        # Use ONLY the pure script for voiceover (no scene descriptions)
+        pure_script = state.get("pure_script", "")
+        if not pure_script:
+            print("⚠️ No pure script available")
+            state["audio_path"] = None
+            return state
+            
+        generateSpeech(pure_script)
         
         # The function saves to "output.mp3" by default, let's move it to our output folder
         if os.path.exists("output.mp3"):
             audio_path = "output/voiceover.mp3"
+            # Remove existing file if it exists
+            if os.path.exists(audio_path):
+                os.remove(audio_path)
             os.rename("output.mp3", audio_path)
             state["audio_path"] = audio_path
             print(f"✅ Audio saved: {audio_path}")
@@ -120,23 +156,37 @@ def generate_voiceover(state: State) -> State:
 
 
 def save_script_to_file(state: State) -> State:
-    """Node 4: Save script to file (video generation placeholder)"""
-    print("💾 Saving script to file...")
+    """Node 4: Save script files - pure script and script with scenes"""
+    print("💾 Saving script files...")
     
     if state.get("error"):
         return state
     
     try:
-        # Save script to text file
-        script_path = "output/script.txt"
-        with open(script_path, "w", encoding="utf-8") as f:
-            f.write("🐱 KITTY EXPLAINS SCRIPT\n")
-            f.write("=" * 50 + "\n\n")
-            f.write(state["script"])
+        # Get the parsed versions from state
+        pure_script = state.get("pure_script", "")
+        script_with_scenes = state.get("script_with_scenes", "")
         
-        state["video_path"] = script_path
-        print(f"✅ Script saved: {script_path}")
-        print("ℹ️  Note: Video generation requires moviepy and pillow libraries")
+        if not pure_script or not script_with_scenes:
+            state["error"] = "Script parsing failed"
+            return state
+        
+        # Save pure script (narration only)
+        pure_script_path = "output/script.txt"
+        with open(pure_script_path, "w", encoding="utf-8") as f:
+            f.write(pure_script)
+        
+        print(f"✅ Pure script saved: {pure_script_path}")
+        
+        # Save full script with scenes
+        full_script_path = "output/script_with_scenes.txt"
+        with open(full_script_path, "w", encoding="utf-8") as f:
+            f.write("🐱 KITTY EXPLAINS - FULL SCRIPT WITH SCENES\n")
+            f.write("=" * 50 + "\n\n")
+            f.write(script_with_scenes)
+        
+        print(f"✅ Script with scenes saved: {full_script_path}")
+        state["video_path"] = pure_script_path
         
     except Exception as e:
         state["error"] = f"Script save failed: {e}"
@@ -153,11 +203,12 @@ def output_result(state: State) -> State:
         print(f"❌ Pipeline failed: {state['error']}")
     else:
         print("✨ Pipeline completed successfully!")
-        print(f"\n📄 Script:\n{state['script'][:200]}...")
+        if state.get("pure_script"):
+            print(f"\n📄 Pure Script Preview:\n{state['pure_script'][:200]}...")
         if state.get("audio_path"):
             print(f"\n🎵 Audio: {state['audio_path']}")
         if state.get("video_path"):
-            print(f"\n🎬 Video: {state['video_path']}")
+            print(f"\n📝 Scripts saved to output folder")
     
     print("="*50 + "\n")
     return state
@@ -186,24 +237,23 @@ def create_pipeline():
     return workflow.compile()
 
 
+# Create the graph instance for LangGraph Studio
+graph = create_pipeline()
+
+
 def run_pipeline(lecture_notes: str):
     """Run the complete pipeline"""
     print("🚀 Starting Kitty Educator Pipeline...\n")
     
-    # Create pipeline
-    app = create_pipeline()
-    
-    # Initial state
-    initial_state = {
+    # Run pipeline
+    result = graph.invoke({
         "notes": lecture_notes,
-        "script": "",
+        "pure_script": "",
+        "script_with_scenes": "",
         "audio_path": "",
         "video_path": "",
         "error": ""
-    }
-    
-    # Run pipeline
-    result = app.invoke(initial_state)
+    })
     
     return result
 

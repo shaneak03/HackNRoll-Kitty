@@ -10,6 +10,9 @@ from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from dotenv import load_dotenv
 
+# Import existing voiceover function
+from voiceover.voiceover import generateSpeech
+
 # Load environment variables
 load_dotenv()
 
@@ -42,50 +45,76 @@ def parse_notes(state: State) -> State:
 
 
 def generate_script(state: State) -> State:
-    """Node 2: Generate educational script with kitten narrator"""
-    print("🎬 Generating script with LLM...")
+    """Node 2: Generate educational script with kitten narrator (following script.py style)"""
+    print("🎬 Generating script with OpenAI...")
     
     if state.get("error"):
         return state
     
     llm = ChatOpenAI(model="gpt-4o", temperature=0.7, api_key=OPENAI_API_KEY)
     
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", """You are a scriptwriter for educational videos featuring an adorable, enthusiastic kitten narrator.
+    # Using the prompt style from script.py
+    user_prompt = f"""
+Write a 30-second script for a 'Kitty Explains' video on the following topic: {state['notes']}. 
+The script should:
+1. Summarize the content decently.
+2. Be humorous.
+3. Refer to the cat as "Kitty".
+
+Example sentences for style: 
+"Kitty wants to find his car in a crowded parking lot. Kitty knows that the license plates are sorted."
+
+Produce only the script, nothing else.
+"""
+    
+    try:
+        prompt = ChatPromptTemplate.from_messages([
+            ("user", user_prompt)
+        ])
         
-Your task: Convert lecture notes into an engaging, easy-to-understand script.
-
-Guidelines:
-- Write in first person as the kitten ("Hi! I'm Kitty, and today...")
-- Keep it friendly, clear, and educational
-- Break down complex topics into simple explanations
-- Use analogies and examples
-- Keep sentences short and conversational
-- Add personality (occasional "meow" or cat references, but don't overdo it)
-- Target length: 1-2 minutes of speaking time
-
-Format: Just the script text, no stage directions."""),
-        ("user", "Lecture notes:\n\n{notes}\n\nGenerate the script:")
-    ])
-    
-    chain = prompt | llm
-    response = chain.invoke({"notes": state["notes"]})
-    
-    state["script"] = response.content
-    print(f"✅ Script generated: {len(state['script'])} characters")
+        chain = prompt | llm
+        response = chain.invoke({})
+        
+        script = response.content
+        
+        if not script:
+            state["error"] = "Script generation returned empty result"
+            return state
+        
+        state["script"] = script
+        print(f"✅ Script generated: {len(script)} characters")
+        
+    except Exception as e:
+        state["error"] = f"Script generation failed: {e}"
+        print(f"❌ {state['error']}")
     
     return state
 
 
 def generate_voiceover(state: State) -> State:
-    """Node 3: Generate audio using TTS (Placeholder - disabled for MVP)"""
-    print("🎤 Skipping voiceover generation (disabled for MVP)...")
+    """Node 3: Generate audio using voiceover.py"""
+    print("🎤 Generating voiceover using voiceover.py...")
     
     if state.get("error"):
         return state
     
-    state["audio_path"] = None
-    print("ℹ️  Add ElevenLabs later for audio generation")
+    try:
+        # Use the existing generateSpeech function from voiceover.py
+        generateSpeech(state["script"])
+        
+        # The function saves to "output.mp3" by default, let's move it to our output folder
+        if os.path.exists("output.mp3"):
+            audio_path = "output/voiceover.mp3"
+            os.rename("output.mp3", audio_path)
+            state["audio_path"] = audio_path
+            print(f"✅ Audio saved: {audio_path}")
+        else:
+            state["audio_path"] = None
+            print("⚠️ Audio file not generated")
+        
+    except Exception as e:
+        print(f"⚠️ Audio generation failed: {e}")
+        state["audio_path"] = None
     
     return state
 
@@ -182,15 +211,20 @@ def run_pipeline(lecture_notes: str):
 if __name__ == "__main__":
     # Example lecture notes
     sample_notes = """
-    Topic: Photosynthesis
+    Topic: Binary Search
     
-    - Process by which plants convert light energy into chemical energy
-    - Occurs in chloroplasts containing chlorophyll
-    - Formula: 6CO2 + 6H2O + light → C6H12O6 + 6O2
-    - Two main stages:
-      1. Light-dependent reactions (in thylakoid)
-      2. Calvin cycle (in stroma)
-    - Importance: Produces oxygen and food for most life on Earth
+    - Efficient algorithm for finding an item in a sorted list
+    - Works by repeatedly dividing the search interval in half
+    - Time complexity: O(log n)
+    - Requirements: List must be sorted
+    - Process:
+      1. Compare target with middle element
+      2. If target equals middle, found
+      3. If target less than middle, search left half
+      4. If target greater than middle, search right half
+      5. Repeat until found or no elements remain
+    - Much faster than linear search for large datasets
+    - Example: Finding a word in a dictionary
     """
     
     # Run the pipeline

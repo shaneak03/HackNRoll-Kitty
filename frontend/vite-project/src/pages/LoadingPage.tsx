@@ -1,13 +1,13 @@
 function LoadingState() {
   return (
     <section style={{ textAlign: "center", marginTop: "4rem" }}>
-      <h2 style={{ fontSize: "var(--fs-600)" }}>Creating your video...</h2>
+      <div style={{ fontSize: "var(--fs-600)", fontWeight: 500 }}>Cooking</div>
       <div
         style={{
-          width: "300px",
-          height: "10px",
+          width: "500px",
+          height: "12px",
           backgroundColor: "var(--clr-neutral-300)",
-          borderRadius: "5px",
+          borderRadius: "1rem",
           marginTop: "1rem",
           overflow: "hidden",
         }}
@@ -18,6 +18,7 @@ function LoadingState() {
             width: "60%", // This would ideally be animated with CSS
             height: "100%",
             backgroundColor: "var(--clr-accent-400)",
+            borderRadius: "1rem",
           }}
         />
       </div>

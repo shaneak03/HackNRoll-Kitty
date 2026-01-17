@@ -5,3 +5,5 @@ langchain-openai
 python-dotenv
 pydantic
 elevenlabs
+openai-whisper
+moviepy==1.0.3

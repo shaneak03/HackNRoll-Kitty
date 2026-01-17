@@ -113,7 +113,7 @@ def saveWithFFMPEG(video_file, srt_file, output_file):
         ffmpeg_exe,
         "-y",  # overwrite output if exists
         "-i", video_file,
-        "-vf", f"subtitles={srt_file}:force_style='FontName=Comic Sans MS,FontSize=16,PrimaryColour=&H000000&,MarginV=220,Outline=0,Shadow=0'",
+        "-vf", f"subtitles={srt_file}:force_style='FontName=Comic Sans MS,FontSize=16,PrimaryColour=&H000000&,MarginV=200,Outline=0,Shadow=0'",
         "-c:a", "copy",  # keep original audio
         output_file
     ]

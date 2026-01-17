@@ -10,6 +10,11 @@ from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from dotenv import load_dotenv
 
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
+import os
+import uuid
+
 # Import existing voiceover function
 from voiceover.voiceover import generateSpeech
 from video.video import generateVideo

@@ -10,6 +10,7 @@ output/
 
 # LangGraph
 .langgraph/
+.langgraph_api/
 *.langgraph
 
 # Python

@@ -1,0 +1,8 @@
+{
+  "dependencies": ["."],
+  "graphs": {
+    "kitty_educator": "./main.py:graph"
+  },
+  "env": ".env",
+  "python_version": "3.13"
+}

@@ -193,7 +193,8 @@ The script should:
 1. Open with an engaging question followed by "explained by cats"
 2. Follow with Kitty explaining the concept
 3. Be humorous and engaging
-4. Refer to the cat as "Kitty"
+4. Refer to the cat as "Kitty" constantly
+4.5. Keep the sentences short. Simple vocabulary, really really dumb it down.
 5. 400 words approximately
 6. Use <emotion> tags to indicate expressions from one of 6 emotions: 'happy', 'explain', 'sad', 'angry', 'confused', 'rq' (rhetorical question)
 7. Use every emotion in your explanation
@@ -204,7 +205,7 @@ The script should:
 9. Resolve the conflict by transitioning from sad/angry into explain and happy emotions as understanding improves
 
 Example opening:
-"How does binary search work explained by cats? Well, imagine Kitty angrily tearing apart the house because finding toys one by one is slow and miserable..."
+"How does binary search work, explained by kitties? Kitty wants to find a toy, but there are too many toys for Kitty to choose from. Kitty wants to..."
 
 Please provide TWO versions:
 

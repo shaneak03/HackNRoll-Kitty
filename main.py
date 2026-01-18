@@ -33,6 +33,7 @@ class State(TypedDict):
     notes: str
     file_data: str  # base64 encoded file
     file_type: str  # 'pdf', 'pptx', or 'text'
+    duration: str
     pure_script: str  # Pure narration only (for voiceover)
     script_with_scenes: str  # Full script with scenes
     audio_path: str
@@ -102,7 +103,6 @@ def extract_text_from_pptx_bytes(file_bytes: bytes) -> str:
         return f"ERROR: Failed to extract PowerPoint content: {str(e)}"
 
 
-
 def parse_notes(state: State) -> State:
     """Node 1: Parse and validate lecture notes OR extract from file"""
     print("📝 Parsing lecture notes...")
@@ -165,96 +165,115 @@ def generate_script(state: State) -> State:
     if state.get("error"):
         return state
     
-    llm = ChatOpenAI(model="gpt-4o", temperature=0.7, api_key=OPENAI_API_KEY)
+    if state.get("duration"):
+        notes = state.get("notes")
+        number_of_words = ""
+
+        match state.get("duration"):
+            case "30s":
+                number_of_words = "150 words"
+            case "60s":
+                number_of_words = "300 words"
+            case "90s":
+                number_of_words = "450 words"
+            case _:
+                number_of_words = "150 words"
+        
+        llm = ChatOpenAI(model="gpt-4o", temperature=0.7, api_key=OPENAI_API_KEY)
+        
+        # Updated prompt to generate both pure script and script with scenes
+        # Use a template variable to avoid f-string issues with curly braces
+        user_prompt = f"""
+            Write a script for a 'Kitty Explains' video on the following topic: {notes}
+
+            IMPORTANT - The script MUST start with a question followed by "explained by kitties":
+            - Examples: "What is photosynthesis explained by kitties?"
+            - "How does binary search work explained by kitties?"
+            - "Why do we need recursion explained by kitties?"
+            - "Can quantum physics be explained by kitties?"
+            - Choose an engaging question format, then ALWAYS add "explained by kitties"
+
+            The script should:
+            1. Open with an engaging question followed by "explained by kitties"
+            2. Follow with Kitty explaining the concept
+            3. Be humorous and engaging
+            4. Refer to the cat as "Kitty"
+            5. Keep it concise
+            6. The script must be around {number_of_words}
+
+            Example opening:
+            "How does binary search work explained by kitties? Kitty wants to find a toy. But Kitty has too many toys..."
+
+            Please provide TWO versions:
+
+            1. PURE SCRIPT (narration only):
+            [Just the dialogue/narration that will be spoken, starting with the question]
+
+            2. SCRIPT WITH SCENES:
+            [Include detailed scene descriptions with specific visual elements, cat expressions/poses, and the narration]
+
+            For the SCRIPT WITH SCENES, make each scene description VERY DETAILED and VISUAL:
+            - Describe the cat's expression, pose, and what they're doing
+            - Mention specific props, objects, or visual elements in the scene
+            - Include colors, lighting, mood
+
+            Format like this:
+            [Scene 1: Description of cat's pose/expression, specific props and objects visible, lighting and mood]
+            Kitty: [dialogue here - starting with the question]
+
+            [Scene 2: Another detailed visual description]
+            Kitty: [dialogue here]
+
+            Format your response exactly like this:
+            ---PURE SCRIPT---
+            [pure narration here - starting with an engaging question]
+
+            ---SCRIPT WITH SCENES---
+            [Scene 1: detailed description]
+            Kitty: [Engaging question about the topic]? [rest of dialogue]
+
+            [Scene 2: detailed description]
+            Kitty: dialogue
+
+            etc.
+            """
+        
+        try:
+            prompt = ChatPromptTemplate.from_messages([
+                ("user", user_prompt)
+            ])
+            
+            chain = prompt | llm
+            response = chain.invoke({"notes": state['notes']})
+            
+            script = response.content
+            
+            if not script:
+                state["error"] = "Script generation returned empty result"
+                return state
+            
+            # Parse the two versions from the LLM response
+            if "---PURE SCRIPT---" in script and "---SCRIPT WITH SCENES---" in script:
+                parts = script.split("---SCRIPT WITH SCENES---")
+                state["pure_script"] = parts[0].replace("---PURE SCRIPT---", "").strip()
+                state["script_with_scenes"] = parts[1].strip()
+            else:
+                # Fallback: if format not followed, use the whole thing for both
+                state["pure_script"] = script
+                state["script_with_scenes"] = script
+            
+            print(f"✅ Script generated")
+            print(f"   Pure script: {len(state['pure_script'])} characters")
+            print(f"   Script with scenes: {len(state['script_with_scenes'])} characters")
+            
+        except Exception as e:
+            state["error"] = f"Script generation failed: {e}"
+            print(f"❌ {state['error']}")
     
-    # Updated prompt to generate both pure script and script with scenes
-    # Use a template variable to avoid f-string issues with curly braces
-    user_prompt = """
-Write a 30-second script for a 'Kitty Explains' video on the following topic: {notes}
-
-IMPORTANT - The script MUST start with a question followed by "explained by cats":
-- Examples: "What is photosynthesis explained by cats?"
-- "How does binary search work explained by cats?"
-- "Why do we need recursion explained by cats?"
-- "Can quantum physics be explained by cats?"
-- Choose an engaging question format, then ALWAYS add "explained by cats"
-
-The script should:
-1. Open with an engaging question followed by "explained by cats"
-2. Follow with Kitty explaining the concept
-3. Be humorous and engaging
-4. Refer to the cat as "Kitty"
-5. Keep it concise for a 30-second video
-
-Example opening:
-"How does binary search work explained by cats? Well, imagine Kitty trying to find his favorite toy in a sorted pile..."
-
-Please provide TWO versions:
-
-1. PURE SCRIPT (narration only):
-[Just the dialogue/narration that will be spoken, starting with the question]
-
-2. SCRIPT WITH SCENES:
-[Include detailed scene descriptions with specific visual elements, cat expressions/poses, and the narration]
-
-For the SCRIPT WITH SCENES, make each scene description VERY DETAILED and VISUAL:
-- Describe the cat's expression, pose, and what they're doing
-- Mention specific props, objects, or visual elements in the scene
-- Include colors, lighting, mood
-
-Format like this:
-[Scene 1: Description of cat's pose/expression, specific props and objects visible, lighting and mood]
-Kitty: [dialogue here - starting with the question]
-
-[Scene 2: Another detailed visual description]
-Kitty: [dialogue here]
-
-Format your response exactly like this:
----PURE SCRIPT---
-[pure narration here - starting with an engaging question]
-
----SCRIPT WITH SCENES---
-[Scene 1: detailed description]
-Kitty: [Engaging question about the topic]? [rest of dialogue]
-
-[Scene 2: detailed description]
-Kitty: dialogue
-
-etc.
-"""
-    
-    try:
-        prompt = ChatPromptTemplate.from_messages([
-            ("user", user_prompt)
-        ])
-        
-        chain = prompt | llm
-        response = chain.invoke({"notes": state['notes']})
-        
-        script = response.content
-        
-        if not script:
-            state["error"] = "Script generation returned empty result"
-            return state
-        
-        # Parse the two versions from the LLM response
-        if "---PURE SCRIPT---" in script and "---SCRIPT WITH SCENES---" in script:
-            parts = script.split("---SCRIPT WITH SCENES---")
-            state["pure_script"] = parts[0].replace("---PURE SCRIPT---", "").strip()
-            state["script_with_scenes"] = parts[1].strip()
-        else:
-            # Fallback: if format not followed, use the whole thing for both
-            state["pure_script"] = script
-            state["script_with_scenes"] = script
-        
-        print(f"✅ Script generated")
-        print(f"   Pure script: {len(state['pure_script'])} characters")
-        print(f"   Script with scenes: {len(state['script_with_scenes'])} characters")
-        
-    except Exception as e:
+    else:
         state["error"] = f"Script generation failed: {e}"
         print(f"❌ {state['error']}")
-    
+
     return state
 
 

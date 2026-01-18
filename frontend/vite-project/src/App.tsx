@@ -8,7 +8,7 @@ import { Client } from "@langchain/langgraph-sdk";
 type AppState = "INPUT" | "LOADING" | "RESULT";
 
 export default function App() {
-  const [step, setStep] = useState<AppState>("LOADING");
+  const [step, setStep] = useState<AppState>("INPUT");
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const client = new Client({ apiUrl: "http://localhost:2024" });
   const [pipelineCount, setPipelineCount] = useState(0);

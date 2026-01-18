@@ -1,7 +1,26 @@
 import os
-
 import whisper
 import subprocess
+import shutil
+from imageio_ffmpeg import get_ffmpeg_exe
+
+# Get the FFmpeg executable path from imageio-ffmpeg
+ffmpeg_path = get_ffmpeg_exe()
+ffmpeg_dir = os.path.dirname(ffmpeg_path)
+
+# Whisper expects 'ffmpeg' command, but imageio-ffmpeg has a versioned name
+# Create a copy with the standard name if it doesn't exist
+standard_ffmpeg = os.path.join(ffmpeg_dir, "ffmpeg.exe")
+if not os.path.exists(standard_ffmpeg):
+    shutil.copy2(ffmpeg_path, standard_ffmpeg)
+
+# Add FFmpeg directory to PATH so Whisper can find it
+if ffmpeg_dir not in os.environ.get("PATH", ""):
+    os.environ["PATH"] = ffmpeg_dir + os.pathsep + os.environ.get("PATH", "")
+
+# Configure MoviePy to use imageio-ffmpeg
+os.environ["IMAGEIO_FFMPEG_EXE"] = ffmpeg_path
+
 from moviepy.editor import VideoClip, ImageClip, AudioFileClip
 
 def processAudioFile(path):
@@ -89,11 +108,12 @@ def writeToSrtFile(srt_file, transcription):
     
 
 def saveWithFFMPEG(video_file, srt_file, output_file):
+    ffmpeg_exe = get_ffmpeg_exe()  # Use the bundled FFmpeg from imageio-ffmpeg
     ffmpeg_cmd = [
-        "ffmpeg",
+        ffmpeg_exe,
         "-y",  # overwrite output if exists
         "-i", video_file,
-        "-vf", f"subtitles={srt_file}:force_style='FontName=Comic Sans MS,FontSize=16,PrimaryColour=&H000000&,MarginV=220,Outline=0,Shadow=0'",
+        "-vf", f"subtitles={srt_file}:force_style='FontName=Comic Sans MS,FontSize=16,PrimaryColour=&H000000&,MarginV=200,Outline=0,Shadow=0'",
         "-c:a", "copy",  # keep original audio
         output_file
     ]
@@ -105,24 +125,45 @@ def generateVideo(closed_png, open_png, video_file, output_file, path="voiceover
     FLAP_INTERVAL = 0.1  # seconds
     SRT_FILE = "output/subs.srt"
 
-    audio_clip, duration = processAudioFile(path)
+    try:
+        print(f"  [1/6] Processing audio: {path}")
+        audio_clip, duration = processAudioFile(path)
+        print(f"  ✓ Audio duration: {duration:.2f}s")
 
-    frame_closed, frame_open = fetchStaticImages(closed_png, open_png)
+        print(f"  [2/6] Loading images: {closed_png}, {open_png}")
+        frame_closed, frame_open = fetchStaticImages(closed_png, open_png)
+        print(f"  ✓ Images loaded")
 
-    transcription, combined_times = parseWithWhisper(path)
+        print(f"  [3/6] Transcribing with Whisper...")
+        transcription, combined_times = parseWithWhisper(path)
+        print(f"  ✓ Transcription complete")
 
-    video = VideoClip(lambda t: make_frame(frame_closed, frame_open, FLAP_INTERVAL, combined_times, t), duration=duration)
-    saveWithMoviePy(video, audio_clip, video_file)
+        print(f"  [4/6] Creating video clip...")
+        video = VideoClip(lambda t: make_frame(frame_closed, frame_open, FLAP_INTERVAL, combined_times, t), duration=duration)
+        print(f"  ✓ Video clip created")
+        
+        print(f"  [5/6] Saving video with MoviePy to {video_file}...")
+        saveWithMoviePy(video, audio_clip, video_file)
+        print(f"  ✓ Video saved")
 
-    writeToSrtFile(SRT_FILE, transcription)
+        print(f"  [6/6] Writing subtitle file...")
+        writeToSrtFile(SRT_FILE, transcription)
+        print(f"  ✓ Subtitles written")
 
-    saveWithFFMPEG(video_file, SRT_FILE, output_file)
+        print(f"  Adding subtitles with FFmpeg...")
+        saveWithFFMPEG(video_file, SRT_FILE, output_file)
+        print(f"  ✓ Final video complete")
 
-    if os.path.exists(video_file):
-        os.remove(video_file)
-    
-    if os.path.exists(SRT_FILE):
-        os.remove(SRT_FILE)
+        if os.path.exists(video_file):
+            os.remove(video_file)
+        
+        if os.path.exists(SRT_FILE):
+            os.remove(SRT_FILE)
+    except Exception as e:
+        print(f"  ✗ Error at step: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise
 
 
 def main():

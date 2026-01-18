@@ -9,3 +9,6 @@ openai-whisper
 moviepy
 pillow
 imageio-ffmpeg
+PyPDF2
+python-pptx
+fastapi

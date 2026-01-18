@@ -6,9 +6,10 @@ import { Client } from "@langchain/langgraph-sdk";
 
 // Define the possible UI states
 type AppState = "INPUT" | "LOADING" | "RESULT";
+type DurationOption = "30s" | "60s" | "90s";
 
 export default function App() {
-  const [step, setStep] = useState<AppState>("LOADING");
+  const [step, setStep] = useState<AppState>("INPUT");
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const client = new Client({ apiUrl: "http://localhost:2024" });
   const [pipelineCount, setPipelineCount] = useState(0);
@@ -27,13 +28,14 @@ export default function App() {
   };
 
   // Unified generation method
-  async function generateKittyVideo(notes: string, file?: File) {
+  async function generateKittyVideo(notes: string, duration: DurationOption, file?: File) {
     const thread = await client.threads.create();
 
     let input: any = {
       notes: notes || "",
       file_data: "",
       file_type: "text",
+      duration,
     };
 
     // If file is provided, convert to base64
@@ -45,6 +47,7 @@ export default function App() {
         notes: "",
         file_data: base64Data,
         file_type: fileExtension,
+        duration,
       };
     }
 
@@ -62,10 +65,10 @@ export default function App() {
     return finalState.values;
   }
 
-  const onGenerate = async (notes: string, file?: File) => {
+  const onGenerate = async (notes: string, duration: DurationOption, file?: File) => {
     try {
       setStep("LOADING");
-      const res = await generateKittyVideo(notes, file);
+      const res = await generateKittyVideo(notes, duration, file);
       console.log(res);
       setStep("RESULT");
       setPipelineCount(0);

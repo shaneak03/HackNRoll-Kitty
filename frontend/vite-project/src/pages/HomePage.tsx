@@ -1,12 +1,14 @@
 import { useState } from "react";
+import SegmentSelector from "../components/SegmentSelector";
 
 function TextInput({ 
   onGenerate 
 }: { 
-  onGenerate: (text: string, file?: File) => void;
+    onGenerate: (text: string, duration: '30s' | '60s' | '90s', file?: File) => void;
 }) {
   const [input, setInput] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [duration, setDuration] = useState<"30s" | "60s" | "90s">("30s");
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -25,9 +27,9 @@ function TextInput({
 
   const handleSubmit = () => {
     if (selectedFile) {
-      onGenerate("", selectedFile);
+      onGenerate("", duration, selectedFile);
     } else if (input.trim()) {
-      onGenerate(input);
+      onGenerate(input, duration);
     }
   };
 
@@ -111,6 +113,11 @@ function TextInput({
           </button>
         )}
       </div>
+
+      <SegmentSelector
+        value={duration}
+        onChange={setDuration}
+      />
 
       <button
         onClick={handleSubmit}

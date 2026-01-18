@@ -1,3 +1,5 @@
+import popCat from "../assets/pop-cat.gif";
+
 const loadingStates = [
   "Sharpening claws",
   "Rendering whiskers",
@@ -17,11 +19,15 @@ function LoadingState({ pipelineCount }: { pipelineCount: number }) {
         display: "flex",
         flexDirection: "column",
         justifyContent: "center",
-        textAlign: "center",
+        alignItems: "center",
         gap: "1rem",
       }}
     >
-      <div style={{ fontSize: "var(--fs-600)", fontWeight: 500 }}>Cooking</div>
+      <img
+        src={popCat}
+        alt='popcat'
+        style={{ width: "150px", height: "auto", marginBottom: "1rem" }}
+      ></img>
       <div
         style={{
           width: "500px",

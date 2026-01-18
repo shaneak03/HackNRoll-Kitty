@@ -1,4 +1,6 @@
 function ResultView({ onReset }: { videoUrl: string; onReset: () => void; }) {
+  const VIDEO_PATH = "http://localhost:2025/video";
+
   return (
     <section
       style={{
@@ -10,12 +12,22 @@ function ResultView({ onReset }: { videoUrl: string; onReset: () => void; }) {
     >
       <div
         style={{
-          padding: "2rem",
-          border: "2px solid var(--clr-accent-400)",
-          borderRadius: "12px",
+          display: "flex",
+          justifyContent: "center", // horizontal centering
+          width: "100%",
         }}
       >
-        <h2 style={{ color: "var(--clr-accent-400)" }}>Video Ready!</h2>
+        <video
+          src={VIDEO_PATH}
+          controls
+          muted
+          playsInline
+          style={{
+            width: "320px",
+            borderRadius: "12px",
+            boxShadow: "0 8px 30px rgba(0,0,0,0.25)",
+          }}
+        />
       </div>
 
       <div style={{ display: "flex", gap: "1rem" }}>
@@ -29,7 +41,7 @@ function ResultView({ onReset }: { videoUrl: string; onReset: () => void; }) {
           }}
           onClick={() => {
             // Fetch the video from backend
-            fetch("http://localhost:2025/video")
+            fetch(VIDEO_PATH)
               .then(res => res.blob())
               .then(blob => {
                 const url = window.URL.createObjectURL(blob);

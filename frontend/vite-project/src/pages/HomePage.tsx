@@ -7,6 +7,7 @@ function TextInput({
     onGenerate: (text: string, duration: '30s' | '60s' | '90s', file?: File) => void;
 }) {
   const [input, setInput] = useState("");
+  const [isShowError, setIsShowError] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [duration, setDuration] = useState<"30s" | "60s" | "90s">("30s");
 
@@ -29,7 +30,13 @@ function TextInput({
     if (selectedFile) {
       onGenerate("", duration, selectedFile);
     } else if (input.trim()) {
+      const words = input.trim().split(/\s+/);
+      if (words.length < 2) {
+        setIsShowError(true);
+        return;
+      }
       onGenerate(input, duration);
+      setIsShowError(false);
     }
   };
 
@@ -134,6 +141,7 @@ function TextInput({
       >
         Generate video
       </button>
+      <div style={{color: "var(--clr-error)", textAlign: "center"}}>{isShowError && "Script is too short!"}</div>
     </section>
   );
 }
